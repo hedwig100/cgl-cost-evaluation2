@@ -64,6 +64,8 @@ std::vector<Res> count_cgl(int size_p, int n) {
         new isogeny::MyCGL<MpInt>{Sqrt, strategy,
                                   /*with_multiple_edge=*/true},
         new isogeny::NoBacktrackCGL<MpInt>{Sqrt, strategy},
+        new isogeny::NoBacktrackCGL<MpInt>{Sqrt, strategy,
+                                           /*use_implict_basis=*/true},
     };
     auto rndgen_dpb = [&n_dpb]() {
         return cryptorandom::generate_01string(n_dpb);
@@ -89,7 +91,7 @@ int main() {
     std::cin >> n;
 
     const int T                   = 5;
-    const int NUMBER_OF_FUNCTIONS = 7;
+    const int NUMBER_OF_FUNCTIONS = 8;
     std::vector<Res> res(NUMBER_OF_FUNCTIONS);
     for (int i = 0; i < T; i++) {
         auto tmp = count_cgl(size_p, n);

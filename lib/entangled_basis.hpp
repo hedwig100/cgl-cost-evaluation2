@@ -41,10 +41,11 @@ template <typename T> class EntangledBasisGenerator {
         }
     }
 
-    // Generates x(P),x(Q),x(P-Q) \in E(Fp2) which P,Q is a basis of E[2^m].
+    // Generates x(P),x(Q),x(P-Q) \in E(Fp2) which P,Q is an implicit basis of
+    // E[2^m].
     std::tuple<montgomery::PointProj<T>, montgomery::PointProj<T>,
                montgomery::PointProj<T>>
-    generate_x(const montgomery::CurveAffine<T> &E) const {
+    generate_implicit_x(const montgomery::CurveAffine<T> &E) const {
         if (E.a == 0) return generate_x_when_a_is_zero(E);
 
         auto [s, r, t, x1] = this->generate_material(E);
@@ -60,8 +61,16 @@ template <typename T> class EntangledBasisGenerator {
              xQ  = montgomery::PointProj<T>{.X = x2, .Z = field::Fp2<T>(1, 0)},
              xPQ = montgomery::PointProj<T>{.X = t1 * X,
                                             .Z = field::square(x2 - x1)};
+        return std::make_tuple(xP, xQ, xPQ);
+    }
 
-        auto E24 = montgomery::to_a24plus(E);
+    // Generates x(P),x(Q),x(P-Q) \in E(Fp2) which P,Q is a basis of E[2^m].
+    std::tuple<montgomery::PointProj<T>, montgomery::PointProj<T>,
+               montgomery::PointProj<T>>
+    generate_x(const montgomery::CurveAffine<T> &E) const {
+        if (E.a == 0) return generate_x_when_a_is_zero(E);
+        auto [xP, xQ, xPQ] = generate_implicit_x(E);
+        auto E24           = montgomery::to_a24plus(E);
         return std::make_tuple(montgomery::ladder(xP, this->cofactor, E24),
                                montgomery::ladder(xQ, this->cofactor, E24),
                                montgomery::ladder(xPQ, this->cofactor, E24));

@@ -778,8 +778,10 @@ template <typename T> class MyCGL : public FuncCGL<T> {
 template <typename T> class NoBacktrackCGL : public FuncCGL<T> {
   public:
     explicit NoBacktrackCGL(const sqrter::Fp2Sqrter<T> &sqrt,
-                            std::vector<int> strategy)
-        : sqrt(sqrt), strategy(strategy) {
+                            std::vector<int> strategy,
+                            bool use_implicit_basis = false)
+        : sqrt(sqrt), strategy(strategy),
+          use_implicit_basis(use_implicit_basis) {
         auto cofactor_e = util::decompose<T>(mod::P<T>() + 1);
         cofactor        = cofactor_e.first;
         e               = cofactor_e.second;
@@ -805,7 +807,12 @@ template <typename T> class NoBacktrackCGL : public FuncCGL<T> {
                           << ")x^2 + x\n"
                           << "s: " << s.substr(i, e) << '\n';
             }
-            walk(E, s.substr(i, e), log);
+
+            if (use_implicit_basis)
+                walk_with_implicit_basis(E, s.substr(i, e), log);
+            else
+                walk(E, s.substr(i, e), log);
+
             if (log) {
                 std::cout << "E/<R>: y^2 = x^3 + (" << montgomery::to_a(E).a
                           << ")x^2 + x\n";
@@ -849,8 +856,48 @@ template <typename T> class NoBacktrackCGL : public FuncCGL<T> {
         E = montgomery::to_a24plus(E_proj);
     }
 
+    void walk_with_implicit_basis(montgomery::Curve24plusAffine<T> &E,
+                                  const std::string &s, bool log) {
+        assert(s.size() == e);
+        field::Fp2<T> K; // unused parameter (used as a empty argument of
+                         // `two_iso_curve`)
+
+        // Calculate kernel point: R = P + s(P - Q)
+        auto [xP, xQ, xPmQ] =
+            basis_generator.generate_implicit_x(montgomery::to_a(E));
+        montgomery::PointProj<T> xR = montgomery::ladder(
+            montgomery::ladder_3point(xP, xPmQ, xQ, s, E), cofactor, E);
+
+        if (log) {
+            std::cout
+                << "P: "
+                << montgomery::to_affine(xP, montgomery::to_a(E), this->sqrt)
+                << '\n'
+                << "Q: "
+                << montgomery::to_affine(xQ, montgomery::to_a(E), this->sqrt)
+                << '\n'
+                << "P-Q: "
+                << montgomery::to_affine(xPmQ, montgomery::to_a(E), this->sqrt)
+                << '\n'
+                << "R: "
+                << montgomery::to_affine(xR, montgomery::to_a(E), this->sqrt)
+                << '\n';
+        }
+
+        // Calcualte isogeny E/<R> and j-invariant of E/<2R>
+        montgomery::Curve24plusProj<T> E_proj;
+        E_proj = montgomery::optimized_two_power_iso(
+            montgomery::to_A24plusC24(E), xR, e, strategy, this->sqrt);
+        E = montgomery::to_a24plus(E_proj);
+    }
+
     // FuncCGL
-    std::string name() const { return "NoBacktrackCGL"; }
+    std::string name() const {
+        if (!use_implicit_basis)
+            return "NoBacktrackCGL";
+        else
+            return "NoBacktrackCGL-with-implicit-basis";
+    }
 
     field::Fp2<T> operator()(const std::string &s) {
         return hash(s, /*log=*/false);
@@ -859,6 +906,7 @@ template <typename T> class NoBacktrackCGL : public FuncCGL<T> {
   private:
     int e;
     T cofactor;
+    bool use_implicit_basis;
     std::vector<int> strategy;
     montgomery::Curve24plusAffine<T> E0;
     montgomery::PointProj<T> p0, q0;
