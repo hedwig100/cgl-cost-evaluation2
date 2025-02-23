@@ -1,6 +1,6 @@
 # CGL cost evaluation
 
-This repository contains codes on TODO.
+This repository contains codes on "Faster CGL hash function via reduced backtracking checks".
 
 This repository consists of two packages. First package is made of C++ and protocols are implemented. Second package is made of Python and it is to calculate the number of operations or optimize isogeny computation strategy.
 
